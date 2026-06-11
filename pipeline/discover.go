@@ -2,9 +2,11 @@ package pipeline
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/slimming/modules"
+	"github.com/slimming/utils"
 )
 
 func (p *Pipeline) Discover(ctx context.Context) ([]modules.FileItem, error) {
@@ -24,7 +26,13 @@ func (p *Pipeline) Discover(ctx context.Context) ([]modules.FileItem, error) {
 				return
 			}
 
+			var totalSize int64
+			for _, item := range scannerItems {
+				totalSize += item.Size
+			}
+
 			mu.Lock()
+			fmt.Printf("  Scanning %s... %d files (%s)\n", s.Name(), len(scannerItems), utils.FormatSize(totalSize))
 			items = append(items, scannerItems...)
 			mu.Unlock()
 		}(scanner)

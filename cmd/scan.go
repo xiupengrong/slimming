@@ -9,12 +9,15 @@ import (
 	"github.com/slimming/modules"
 	"github.com/slimming/pipeline"
 	"github.com/slimming/risk"
+	"github.com/slimming/utils"
 )
 
 var scanCmd = &cobra.Command{
 	Use:   "scan",
 	Short: "扫描可清理内容",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println("\n🔍 Scanning C:\\ drive...\n")
+
 		cfg, err := config.LoadConfig()
 		if err != nil {
 			return fmt.Errorf("加载配置失败: %w", err)
@@ -53,30 +56,11 @@ var scanCmd = &cobra.Command{
 		}
 
 		fmt.Printf("\n📊 Scan Summary\n\n")
-		fmt.Printf("LOW risk     (auto-clean)         %d items  %s\n", lowCount, formatSize(lowSize))
-		fmt.Printf("MEDIUM risk  (needs confirm)       %d items  %s\n", mediumCount, formatSize(mediumSize))
-		fmt.Printf("HIGH risk    (skipped by default)  %d items  %s\n", highCount, formatSize(highSize))
-		fmt.Printf("\nTotal: %d items, %s potential space\n", len(items), formatSize(lowSize+mediumSize+highSize))
+		fmt.Printf("LOW risk     (auto-clean)         %d items  %s\n", lowCount, utils.FormatSize(lowSize))
+		fmt.Printf("MEDIUM risk  (needs confirm)       %d items  %s\n", mediumCount, utils.FormatSize(mediumSize))
+		fmt.Printf("HIGH risk    (skipped by default)  %d items  %s\n", highCount, utils.FormatSize(highSize))
+		fmt.Printf("\nTotal: %d items, %s potential space\n", len(items), utils.FormatSize(lowSize+mediumSize+highSize))
 
 		return nil
 	},
-}
-
-func formatSize(bytes int64) string {
-	const (
-		KB = 1024
-		MB = 1024 * KB
-		GB = 1024 * MB
-	)
-
-	switch {
-	case bytes >= GB:
-		return fmt.Sprintf("%.1f GB", float64(bytes)/float64(GB))
-	case bytes >= MB:
-		return fmt.Sprintf("%.1f MB", float64(bytes)/float64(MB))
-	case bytes >= KB:
-		return fmt.Sprintf("%.1f KB", float64(bytes)/float64(KB))
-	default:
-		return fmt.Sprintf("%d B", bytes)
-	}
 }
