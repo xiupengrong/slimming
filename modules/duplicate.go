@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/slimming/config"
 )
@@ -26,7 +27,8 @@ func (s *DuplicateScanner) Scan(ctx context.Context, cfg *config.Config) ([]File
 
 	minSize := int64(cfg.Duplicates.MinSizeMB) * 1024 * 1024
 
-	fileHashes := make(map[string][]string)
+	// 第一阶段：按文件大小分组
+	sizeGroups := make(map[int64][]string)
 
 	drives := []string{"C:\\"}
 
@@ -42,7 +44,8 @@ func (s *DuplicateScanner) Scan(ctx context.Context, cfg *config.Config) ([]File
 
 			if info.IsDir() {
 				dirName := info.Name()
-				if dirName == "Windows" || dirName == "Program Files" || dirName == "Program Files (x86)" {
+				if dirName == "Windows" || dirName == "Program Files" || dirName == "Program Files (x86)" ||
+					dirName == "ProgramData" || dirName == "$Recycle.Bin" || dirName == "System Volume Information" {
 					return filepath.SkipDir
 				}
 			}
@@ -54,11 +57,7 @@ func (s *DuplicateScanner) Scan(ctx context.Context, cfg *config.Config) ([]File
 						return nil
 					}
 				}
-
-				hash, err := hashFile(path)
-				if err == nil {
-					fileHashes[hash] = append(fileHashes[hash], path)
-				}
+				sizeGroups[info.Size()] = append(sizeGroups[info.Size()], path)
 			}
 
 			return nil
@@ -69,17 +68,48 @@ func (s *DuplicateScanner) Scan(ctx context.Context, cfg *config.Config) ([]File
 		}
 	}
 
-	for _, paths := range fileHashes {
-		if len(paths) > 1 {
-			for _, path := range paths[1:] {
-				info, err := os.Stat(path)
+	// 第二阶段：只对相同大小的文件计算哈希（并发）
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 10) // 限制并发数
+
+	for _, paths := range sizeGroups {
+		if len(paths) < 2 {
+			continue
+		}
+
+		fileHashes := make(map[string][]string)
+
+		for _, path := range paths {
+			wg.Add(1)
+			sem <- struct{}{}
+			go func(p string) {
+				defer wg.Done()
+				defer func() { <-sem }()
+
+				hash, err := hashFile(p)
 				if err == nil {
-					items = append(items, FileItem{
-						Path:   path,
-						Size:   info.Size(),
-						Module: "duplicate",
-						Risk:   RiskHigh,
-					})
+					mu.Lock()
+					fileHashes[hash] = append(fileHashes[hash], p)
+					mu.Unlock()
+				}
+			}(path)
+		}
+
+		wg.Wait()
+
+		for _, paths := range fileHashes {
+			if len(paths) > 1 {
+				for _, path := range paths[1:] {
+					info, err := os.Stat(path)
+					if err == nil {
+						items = append(items, FileItem{
+							Path:   path,
+							Size:   info.Size(),
+							Module: "duplicate",
+							Risk:   RiskHigh,
+						})
+					}
 				}
 			}
 		}

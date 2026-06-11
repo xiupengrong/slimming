@@ -37,7 +37,8 @@ func (s *LargeFileScanner) Scan(ctx context.Context, cfg *config.Config) ([]File
 
 			if info.IsDir() {
 				dirName := info.Name()
-				if dirName == "Windows" || dirName == "Program Files" || dirName == "Program Files (x86)" {
+				if dirName == "Windows" || dirName == "Program Files" || dirName == "Program Files (x86)" ||
+					dirName == "ProgramData" || dirName == "$Recycle.Bin" || dirName == "System Volume Information" {
 					return filepath.SkipDir
 				}
 
