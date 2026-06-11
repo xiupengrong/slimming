@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	dryRun bool
-	risk   string
-	all    bool
+	dryRun    bool
+	riskLevel string
+	all       bool
 )
 
 var cleanCmd = &cobra.Command{
@@ -86,6 +86,6 @@ var cleanCmd = &cobra.Command{
 
 func init() {
 	cleanCmd.Flags().BoolVar(&dryRun, "dry-run", false, "预览模式，不执行删除")
-	cleanCmd.Flags().StringVar(&risk, "risk", "", "只清理指定风险等级 (low/medium/high)")
+	cleanCmd.Flags().StringVar(&riskLevel, "risk", "", "只清理指定风险等级 (low/medium/high)")
 	cleanCmd.Flags().BoolVar(&all, "all", false, "清理所有风险等级")
 }
