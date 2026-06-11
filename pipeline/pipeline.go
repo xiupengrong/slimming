@@ -20,6 +20,11 @@ func NewPipeline(config *config.Config) *Pipeline {
 			&modules.ThumbnailScanner{},
 			&modules.LogScanner{},
 			&modules.BrowserScanner{},
+			&modules.WUpdateScanner{},
+			&modules.PkgCacheScanner{},
+			&modules.WinOldScanner{},
+			&modules.LargeFileScanner{},
+			&modules.DuplicateScanner{},
 		},
 		config: config,
 	}

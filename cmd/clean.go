@@ -41,6 +41,11 @@ var cleanCmd = &cobra.Command{
 		}
 
 		engine := risk.NewRiskEngine(cfg.Risk)
+
+		if !all {
+			items = p.Confirm(items, engine)
+		}
+
 		toDelete := []modules.FileItem{}
 
 		for _, item := range items {
@@ -52,10 +57,10 @@ var cleanCmd = &cobra.Command{
 
 			if level == risk.Low {
 				toDelete = append(toDelete, item)
-			} else if level == risk.Medium && !all {
-				fmt.Printf("跳过 medium 风险项: %s\n", item.Path)
-			} else if level == risk.High && !all {
-				fmt.Printf("跳过 high 风险项: %s\n", item.Path)
+			} else if level == risk.Medium && item.Confirmed {
+				toDelete = append(toDelete, item)
+			} else if level == risk.High && all {
+				toDelete = append(toDelete, item)
 			}
 		}
 
