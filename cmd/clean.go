@@ -9,6 +9,7 @@ import (
 	"github.com/slimming/config"
 	"github.com/slimming/modules"
 	"github.com/slimming/pipeline"
+	"github.com/slimming/report"
 	"github.com/slimming/risk"
 )
 
@@ -84,6 +85,10 @@ var cleanCmd = &cobra.Command{
 		}
 
 		fmt.Printf("\n清理完成: 删除 %d 个文件，释放 %s 空间\n", deleted, formatSize(freedSize))
+
+		if err := report.GenerateReport(cfg, items, toDelete, engine); err != nil {
+			fmt.Printf("生成报告失败: %v\n", err)
+		}
 
 		return nil
 	},
