@@ -2,13 +2,12 @@ package modules
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"io"
 	"os"
 	"path/filepath"
 	"sync"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/slimming/config"
 )
 
@@ -68,10 +67,10 @@ func (s *DuplicateScanner) Scan(ctx context.Context, cfg *config.Config) ([]File
 		}
 	}
 
-	// 第二阶段：只对相同大小的文件计算哈希（并发）
+	// 第二阶段：只对相同大小的文件计算哈希（并发，使用xxhash）
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, 10) // 限制并发数
+	sem := make(chan struct{}, 20) // 增加并发数到20
 
 	for _, paths := range sizeGroups {
 		if len(paths) < 2 {
@@ -87,7 +86,7 @@ func (s *DuplicateScanner) Scan(ctx context.Context, cfg *config.Config) ([]File
 				defer wg.Done()
 				defer func() { <-sem }()
 
-				hash, err := hashFile(p)
+				hash, err := hashFileFast(p)
 				if err == nil {
 					mu.Lock()
 					fileHashes[hash] = append(fileHashes[hash], p)
@@ -118,17 +117,17 @@ func (s *DuplicateScanner) Scan(ctx context.Context, cfg *config.Config) ([]File
 	return items, nil
 }
 
-func hashFile(path string) (string, error) {
+func hashFileFast(path string) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
 	defer file.Close()
 
-	hash := sha256.New()
+	hash := xxhash.New()
 	if _, err := io.Copy(hash, file); err != nil {
 		return "", err
 	}
 
-	return hex.EncodeToString(hash.Sum(nil)), nil
+	return string(hash.Sum(nil)), nil
 }

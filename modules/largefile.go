@@ -25,6 +25,19 @@ func (s *LargeFileScanner) Scan(ctx context.Context, cfg *config.Config) ([]File
 
 	drives := []string{"C:\\"}
 
+	// 需要跳过的目录
+	skipDirs := map[string]bool{
+		"Windows":                  true,
+		"Program Files":            true,
+		"Program Files (x86)":      true,
+		"ProgramData":              true,
+		"$Recycle.Bin":             true,
+		"System Volume Information": true,
+		"Recovery":                 true,
+		"Config.Msi":               true,
+		"MSOCache":                 true,
+	}
+
 	for _, drive := range drives {
 		err := filepath.Walk(drive, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -37,8 +50,7 @@ func (s *LargeFileScanner) Scan(ctx context.Context, cfg *config.Config) ([]File
 
 			if info.IsDir() {
 				dirName := info.Name()
-				if dirName == "Windows" || dirName == "Program Files" || dirName == "Program Files (x86)" ||
-					dirName == "ProgramData" || dirName == "$Recycle.Bin" || dirName == "System Volume Information" {
+				if skipDirs[dirName] {
 					return filepath.SkipDir
 				}
 
